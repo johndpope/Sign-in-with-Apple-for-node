@@ -196,7 +196,7 @@ const returnExistingSupabaseJWTorCreateAccount = async (jwtClaims) => {
 			for await (let u of response.users) {
 				if (u.id == newUser.id) {
 					console.log("we found existing gotrue user in supabase:", u);
-					console.log("issue jwt:", u.jwt());
+					// console.log("issue jwt:", u.jwt());
 				}
 			}
 		}
