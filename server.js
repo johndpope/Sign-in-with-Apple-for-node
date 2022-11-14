@@ -151,7 +151,7 @@ const createAccountManually = async (email) => {
 	let user =  await findExistingUserByEmail(email);
 	if (user == null){
 		try{
-			const res = await pool.query('INSERT INTO auth.users ( id, instance_id, ROLE, aud, email, raw_app_meta_data, raw_user_meta_data, is_super_admin, encrypted_password, created_at, updated_at, last_sign_in_at, email_confirmed_at, confirmation_sent_at, confirmation_token, recovery_token, email_change_token_new, email_change ) VALUES ( gen_random_uuid(), \'00000000-0000-0000-0000-000000000000\', \'authenticated\', \'authenticated\', $1, \'{"provider":"email","providers":["email"]}\', \'{}\', FALSE, \'password\', NOW(), NOW(), NOW(), NOW(), NOW(), \'\', \'\', \'\', \'\' ); ;', [email]);
+			const res = await pool.query('INSERT INTO auth.users ( id, instance_id, ROLE, aud, email, raw_app_meta_data, raw_user_meta_data, is_super_admin, encrypted_password, created_at, updated_at, last_sign_in_at, email_confirmed_at, confirmation_sent_at, confirmation_token, recovery_token, email_change_token_new, email_change ) VALUES ( gen_random_uuid(), \'00000000-0000-0000-0000-000000000000\', \'authenticated\', \'authenticated\', $1, \'{"provider":"apple","providers":["apple"]}\', \'{}\', FALSE, \'password\', NOW(), NOW(), NOW(), NOW(), NOW(), \'\', \'\', \'\', \'\' ); ;', [email]);
 			const res1 = await pool.query('INSERT INTO auth.identities ( id, provider, user_id, identity_data, last_sign_in_at, created_at, updated_at ) VALUES ( ( SELECT id FROM auth.users WHERE email = $1 ), \'email\', ( SELECT id FROM auth.users WHERE email = $1), json_build_object( \'sub\', ( SELECT id FROM auth.users WHERE email = $1 ) ), NOW(), NOW(), NOW() );', [email]);
 			
 			console.log("res:", res.rows);
@@ -325,4 +325,5 @@ const jwtClaims = {
 	auth_time: 1579483204
 };
 // returnExistingSupabaseJWTorCreateAccount(jwtClaims);
-createAccountManually("bob@bob.com")
+console.log("json:", JSON.stringify(jwtClaims));
+createAccountManually("bob2@bob.com")
