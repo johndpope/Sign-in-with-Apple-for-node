@@ -68,9 +68,9 @@ const keyFile = '.static/AuthKey_KFJ7FG3H2V.p8'
 // POSTGRES
 const pool = new Pool({
 	user: 'postgres',
-	password: POSTGRES_PWD,
-	host: POSTGRES_URL,
-	port: 5432,
+	password: config.postgres.password,
+	host: config.postgres.host,
+	port: config.postgres.port,
 });
 
 
