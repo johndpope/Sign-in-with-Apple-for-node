@@ -300,7 +300,12 @@ app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, 
 		url: 'https://appleid.apple.com/auth/token'
 	}).then(response => {
 		verifyIdToken(clientSecret, response.data.id_token, config.apple.clientID).then((jwtClaims) => {
-			return returnExistingSupabaseJWTorCreateAccount(jwtClaims);
+			let user = returnExistingSupabaseJWTorCreateAccount(jwtClaims);
+			return res.status(200).json({
+				message: 'ok',
+				data: user
+			})
+
 		})
 	}).catch(error => {
 		console.log("error:", error);
