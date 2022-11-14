@@ -108,31 +108,47 @@ const getAppleIDPublicKey = async (kid) => {
 };
 
 // ✅  WE HAVE SUCCESSFULLY LOGGED IN 
-const returnExistingSupabaseJWTorCreateAccount = async (claims) => {
-			// ASSUME EVERY EMAIL IS VERIFIED
-			const jwtClaims = { iss: 'https://appleid.apple.com',
-			  aud: 'app.test.ios', 
-			  exp: 1579483805,
-			  iat: 1579483205,
-			  sub: '000317.c7d501c4f43c4a40ac3f79e122336fcf.0952',
-			  at_hash: 'G413OYB2Ai7UY5GtiuG68A',
-			  email: 'da6evzzywz@privaterelay.appleid.com',
-			  email_verified: 'true',
-			  is_private_email: 'true',
-			  auth_time: 1579483204 }
-
-
+const findExistingUserByEmail = async (email) =>{
 	const res = await db.query('SELECT * FROM auth.users WHERE email = $1', ["test@test.com"]);
 	console.log("ok:",res.rows[0].id);
+	if (res.rows.length == 0){
+		return null;
+	}
+	return res.rows[0].id;
+}
+const returnExistingSupabaseJWTorCreateAccount = async (claims) => {
+	// ASSUME EVERY EMAIL IS VERIFIED
+	const jwtClaims = { iss: 'https://appleid.apple.com',
+		aud: 'app.test.ios', 
+		exp: 1579483805,
+		iat: 1579483205,
+		sub: '000317.c7d501c4f43c4a40ac3f79e122336fcf.0952',
+		at_hash: 'G413OYB2Ai7UY5GtiuG68A',
+		email: 'da6evzzywz@privaterelay.appleid.com',
+		email_verified: 'true',
+		is_private_email: 'true',
+		auth_time: 1579483204 }
 
 
-	
-			// TODO - 
-			// IF EXISTING APPLE ID) WHERE the email = matches
-			//  - check it's enabled
-			//  - return valid JWT
-			// {"provider":"apple","providers":["apple"]}
-			// ELSE) create new account
+	let user = findExistingUserByEmail(jwtClaims.email);
+
+	if (user == null){
+
+		const { data: user, error } = await supabase.auth.api.createUser({
+			email: jwtClaims.email,
+			email_confirm: true
+		  })
+
+	}
+
+
+
+	// TODO - 
+	// IF EXISTING APPLE ID) WHERE the email = matches
+	//  - check it's enabled
+	//  - return valid JWT
+	// {"provider":"apple","providers":["apple"]}
+	// ELSE) create new account
       
 
 }
