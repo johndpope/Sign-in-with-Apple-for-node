@@ -131,12 +131,14 @@ const returnExistingSupabaseJWTorCreateAccount = async (claims) => {
 
 
 	let user = findExistingUserByEmail(jwtClaims.email);
+	///const { data: user, error } = await supabase.auth.api.listUsers()
+	// match these - return on id 
 
 	if (user == null){
 
 		const { data: user, error } = await supabase.auth.api.createUser({
 			email: jwtClaims.email,
-			email_confirm: true
+			email_confirm: true // missing provide / identities guff
 		  })
 
 	}
