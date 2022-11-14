@@ -68,8 +68,8 @@ const keyFile = '.static/AuthKey_KFJ7FG3H2V.p8'
 // POSTGRES
 const pool = new Pool({
 	user: 'postgres',
-	password: 'aNBsCsO0D2AWO5jb',
-	host: 'db.qfwzdkpmyzajmmvupgzy.supabase.co',
+	password: POSTGRES_PWD,
+	host: POSTGRES_URL,
 	port: 5432,
 });
 
@@ -137,7 +137,7 @@ const findExistingUserByEmail = async (email) => {
 			console.log("⚠️ No match on supabase for email:",email);
 			return null;
 		}
-		console.log("ok:", res.rows[0]);
+		console.log("✅ Found User:", res.rows[0],"on email:",email);
 		return res.rows[0];
 	}catch(error){
 		console.log("error:", error);
@@ -145,19 +145,28 @@ const findExistingUserByEmail = async (email) => {
 	}
 	
 }
+
+const createAccountManually = async (email) => {
+
+	let user =  await findExistingUserByEmail(email);
+	if (user == null){
+		try{
+			const res = await pool.query('INSERT INTO auth.users ( id, instance_id, ROLE, aud, email, raw_app_meta_data, raw_user_meta_data, is_super_admin, encrypted_password, created_at, updated_at, last_sign_in_at, email_confirmed_at, confirmation_sent_at, confirmation_token, recovery_token, email_change_token_new, email_change ) VALUES ( gen_random_uuid(), \'00000000-0000-0000-0000-000000000000\', \'authenticated\', \'authenticated\', $1, \'{"provider":"email","providers":["email"]}\', \'{}\', FALSE, \'password\', NOW(), NOW(), NOW(), NOW(), NOW(), \'\', \'\', \'\', \'\' ); ;', [email]);
+			const res1 = await pool.query('INSERT INTO auth.identities ( id, provider, user_id, identity_data, last_sign_in_at, created_at, updated_at ) VALUES ( ( SELECT id FROM auth.users WHERE email = $1 ), \'email\', ( SELECT id FROM auth.users WHERE email = $1), json_build_object( \'sub\', ( SELECT id FROM auth.users WHERE email = $1 ) ), NOW(), NOW(), NOW() );', [email]);
+			
+			console.log("res:", res.rows);
+			console.log("res1:", res1.rows);
+			return;
+		}catch(error){
+			console.log("error:", error);
+			return null;
+		}
+	}
+}
+
 const returnExistingSupabaseJWTorCreateAccount = async (jwtClaims) => {
 
 	let user =  await findExistingUserByEmail(jwtClaims.email);
-	{
-		const { data: response, error } = await supabase.auth.admin.listUsers();
-		// console.log("listUsers response:", response.users);
-		for await (let u of response.users) {
-			if (u.id == user.id) {
-				console.log("we found existing user in supabase:", u);
-			}
-		}
-	}
-
 	if (user == null) {
 		console.log("🌱 creating user");
 		const { data: newUser, error } = await supabase.auth.admin.createUser({
@@ -166,7 +175,33 @@ const returnExistingSupabaseJWTorCreateAccount = async (jwtClaims) => {
 		})
 		console.log("newUser:", newUser);
 
+		// create an access token
+		let claims = {
+			"StandardClaims": {
+				"sub": newUser.id,
+				"aud": "",
+				"exp": Math.floor(Date.now() / 1000),
+			},
+			"Email": newUser.Email,
+			"AppMetaData": newUser.AppMetaData,
+			"UserMetaData": newUser.UserMetaData,
+		}
+		console.log("✅ claims:", claims);
+		const jwt = sign(claims, config.supabase.jwtSecret);
+		console.log("jwt:", jwt);
+		return jwt;
+		
 	} else {
+		// Match up to the userId to user dictionary
+		{
+			const { data: response, error } = await supabase.auth.admin.listUsers();
+			// console.log("listUsers response:", response.users);
+			for await (let u of response.users) {
+				if (u.id == user.id) {
+					console.log("we found existing user in supabase:", u);
+				}
+			}
+		}
 		console.log("🌱 we found a gotrue user:",user);
 		// create an access token
 		let claims = {
@@ -181,7 +216,7 @@ const returnExistingSupabaseJWTorCreateAccount = async (jwtClaims) => {
 		}
 		console.log("✅ claims:", claims);
 		const jwt = sign(claims, config.supabase.jwtSecret);
-		console.log("jwt:", jwt);
+		console.log("descrypt on https://jwt.io -", jwt);
 		return jwt;
 	}
 
@@ -275,8 +310,8 @@ const verifyIdToken = async (clientSecret, idToken, clientID) => {
 })
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')))
-app.listen(process.env.PORT || 80, () => console.log(`App listening on port ${process.env.PORT || 80}!  http://0.0.0.0:80/login/apple `))*/
-
+app.listen(process.env.PORT || 80, () => console.log(`App listening on port ${process.env.PORT || 80}!  http://0.0.0.0:80/login/apple `))
+*/
 const jwtClaims = {
 	iss: 'https://appleid.apple.com',
 	aud: 'app.test.ios',
@@ -284,9 +319,10 @@ const jwtClaims = {
 	iat: 1579483205,
 	sub: '000317.c7d501c4f43c4a40ac3f79e122336fcf.0952',
 	at_hash: 'G413OYB2Ai7UY5GtiuG68A',
-	email: 'da6evzzywz@privaterelay.appleid.com',
+	email: 'da6evzzywz1@privaterelay.appleid.com',
 	email_verified: 'true',
 	is_private_email: 'true',
 	auth_time: 1579483204
 };
-returnExistingSupabaseJWTorCreateAccount(jwtClaims);
+// returnExistingSupabaseJWTorCreateAccount(jwtClaims);
+createAccountManually("bob@bob.com")
