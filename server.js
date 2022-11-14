@@ -44,7 +44,7 @@ const config = {
 		"teamID": "PP83B8JPN5",
 		"keyID": "KFJ7FG3H2V",
 		"p8Filename": "AuthKey_KFJ7FG3H2V.p8",
-		"redirectURI": "https:/www.wweevv.app/success"
+		"redirectURI": "https://qfwzdkpmyzajmmvupgzy.supabase.co/auth/v1/callback"
 	},
 	"supabase": {
 		"jwtSecret": "gpmz/H4tuUkI5Tn67IalUkTwrk00Ue0NO2vpTDWhW3PQ0e28MlKJvJZvbhYtmiH0mBCQ0AnZ8nYNlqqUfgvlQQ=="
@@ -287,8 +287,8 @@ const verifyIdToken = async (clientSecret, idToken, clientID) => {
 };
 
 
-//  curl -X POST -d 'code=cf2add9a5a15842d4b06683fa89152446.0.ntrx.OHzVN63UPWqSjEr-oBsU6g' http://0.0.0.0:80/login/apple
-/*app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, next) => {
+// curl -X POST -d 'code=cf2add9a5a15842d4b06683fa89152446.0.ntrx.OHzVN63UPWqSjEr-oBsU6g' http://0.0.0.0:80/login/apple
+app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, next) => {
 	const clientSecret = getClientSecret();
 	const params = {
 		grant_type: 'authorization_code', // refresh_token authorization_code
@@ -317,8 +317,8 @@ const verifyIdToken = async (clientSecret, idToken, clientID) => {
 })
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')))
-app.listen(process.env.PORT || 80, () => console.log(`App listening on port ${process.env.PORT || 80}!  http://0.0.0.0:80/login/apple `))
-*/
+app.listen(process.env.PORT || 80, () => console.log(`App listening on port ${process.env.PORT || 80}!  http://0.0.0.0:80 callbackurl  http://0.0.0.0:80/login/apple `))
+/*
 const jwtClaims = {
 	iss: 'https://appleid.apple.com',
 	aud: 'app.test.ios',
@@ -333,4 +333,4 @@ const jwtClaims = {
 };
 // returnExistingSupabaseJWTorCreateAccount(jwtClaims);
 console.log("json:", JSON.stringify(jwtClaims));
-createAccountManually("bob8@bob.com")
+createAccountManually("bob8@bob.com")*/

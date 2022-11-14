@@ -53,3 +53,11 @@ npm run start
  curl -X POST -d 'code=cf2add9a5a15842d4b06683fa89152446.0.ntrx.OHzVN63UPWqSjEr-oBsU6g' http://0.0.0.0:80/login/apple
 
 ```
+
+## Configure supabase / Authentication providers / Apple /
+ generate a secret key in client_secret.rb
+ 
+ key_file = '.static/AuthKey_******.p8'
+ team_id = 'PP83B******8JPN5'
+ client_id = 'com.******'
+ key_id = '******'

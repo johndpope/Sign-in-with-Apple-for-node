@@ -1,9 +1,9 @@
 require 'jwt'
 
-key_file = '.txt'
-team_id = ''
-client_id = '.signInWithApple'
-key_id = ''
+key_file = '.static/AuthKey_******.p8'
+team_id = '******'
+client_id = 'com.******'
+key_id = '******'
 
 ecdsa_key = OpenSSL::PKey::EC.new IO.read key_file
 
