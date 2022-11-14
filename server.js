@@ -1,4 +1,3 @@
-
 const express = require('express')
 const app = express()
 const path = require('path')
@@ -8,9 +7,52 @@ const fs = require('fs')
 const axios = require('axios')
 const qs = require('qs');
 const NodeRSA = require('node-rsa');
-const pg = require('pg');
 const TOKEN_ISSUER = 'https://appleid.apple.com';
-// const passport = require('passport');
+const { createClient } = require('@supabase/supabase-js');
+const { GoTrueClient } = require('@supabase/gotrue-js');
+const sign = require('jwt-encode');
+var Pool = require('pg-pool')
+
+// by default the pool uses the same
+// configuration as whatever `pg` version you have installed
+require('dotenv').config({ path: '.env' });
+
+
+const NEXT_PUBLIC_SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const POSTGRES_URL = process.env.POSTGRES_URL;
+const POSTGRES_PWD = process.env.POSTGRES_PWD;
+
+
+const NEXT_PUBLIC_SUPABASE_SERVICE_KEY = process.env.NEXT_PUBLIC_SUPABASE_SERVICE_KEY;
+if (!NEXT_PUBLIC_SUPABASE_URL)
+	throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_URL');
+if (!NEXT_PUBLIC_SUPABASE_SERVICE_KEY)
+	throw new Error('Missing env.NEXT_PUBLIC_SUPABASE_SERVICE_KEY');
+
+
+const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_SERVICE_KEY);
+
+/// N.B. for docker local - jwSecret must match  GOTRUE_JWT_SECRET="1234" in .env.docker
+const config = {
+	"postgres": {
+		"host": POSTGRES_URL,
+		"port": 5432,
+		"password":POSTGRES_PWD
+	},
+	"apple": {
+		"clientID": "com.wweevv.client",
+		"teamID": "PP83B8JPN5",
+		"keyID": "KFJ7FG3H2V",
+		"p8Filename": "AuthKey_KFJ7FG3H2V.p8",
+		"redirectURI": "https:/www.wweevv.app/success"
+	},
+	"supabase": {
+		"jwtSecret": "gpmz/H4tuUkI5Tn67IalUkTwrk00Ue0NO2vpTDWhW3PQ0e28MlKJvJZvbhYtmiH0mBCQ0AnZ8nYNlqqUfgvlQQ=="
+	}
+}
+
+const GOTRUE_URL = NEXT_PUBLIC_SUPABASE_URL;//'http://0.0.0.0:9999'
+const auth = new GoTrueClient({ url: GOTRUE_URL })
 
 /* INSTRUCTIONS - PREFACE
 Create key - Sign in with Apple
@@ -24,32 +66,12 @@ const keyFile = '.static/AuthKey_KFJ7FG3H2V.p8'
 */
 
 // POSTGRES
-// node-pg returns numerics as strings by default. since we don't expect to
-// have large currency values, we'll parse them as floats instead.
-pg.types.setTypeParser(1700, (val) => parseFloat(val));
-
-const db = new pg.Pool({
-	max: 10,
-	min: 2,
-	idleTimeoutMillis: 1000, // close idle clients after 1 second
-	connectionTimeoutMillis: 1000, // return an error after 1 second if connection could not be established
-	database: 'postgres',
+const pool = new Pool({
 	user: 'postgres',
-	// Gotrue docker
-	host: '0.0.0.0',
+	password: 'aNBsCsO0D2AWO5jb',
+	host: 'db.qfwzdkpmyzajmmvupgzy.supabase.co',
 	port: 5432,
-	password: 'root',
 });
-
-const config = {
-  "apple" : {
-    "clientID": "com.wweevv.client",
-    "teamID": "PP83B8JPN5",
-    "keyID": "KFJ7FG3H2V",
-    "p8Filename": "AuthKey_KFJ7FG3H2V.p8",
-    "redirectURI": "https:/www.wweevv.app/success"
-  }
-}
 
 
 // BEGIN APPLE LOGIN 
@@ -108,52 +130,63 @@ const getAppleIDPublicKey = async (kid) => {
 };
 
 // ✅  WE HAVE SUCCESSFULLY LOGGED IN 
-const findExistingUserByEmail = async (email) =>{
-	const res = await db.query('SELECT * FROM auth.users WHERE email = $1', ["test@test.com"]);
-	console.log("ok:",res.rows[0].id);
-	if (res.rows.length == 0){
+const findExistingUserByEmail = async (email) => {
+	try{
+		const res = await pool.query('SELECT id,email,encrypted_password FROM auth.users WHERE email = $1', [email]);
+		if (res.rows.length == 0) {
+			console.log("⚠️ No match on supabase for email:",email);
+			return null;
+		}
+		console.log("ok:", res.rows[0]);
+		return res.rows[0];
+	}catch(error){
+		console.log("error:", error);
 		return null;
 	}
-	return res.rows[0].id;
+	
 }
-const returnExistingSupabaseJWTorCreateAccount = async (claims) => {
-	// ASSUME EVERY EMAIL IS VERIFIED
-	const jwtClaims = { iss: 'https://appleid.apple.com',
-		aud: 'app.test.ios', 
-		exp: 1579483805,
-		iat: 1579483205,
-		sub: '000317.c7d501c4f43c4a40ac3f79e122336fcf.0952',
-		at_hash: 'G413OYB2Ai7UY5GtiuG68A',
-		email: 'da6evzzywz@privaterelay.appleid.com',
-		email_verified: 'true',
-		is_private_email: 'true',
-		auth_time: 1579483204 }
+const returnExistingSupabaseJWTorCreateAccount = async (jwtClaims) => {
 
-
-	let user = findExistingUserByEmail(jwtClaims.email);
-	///const { data: user, error } = await supabase.auth.api.listUsers()
-	// match these - return on id 
-
-	if (user == null){
-
-		const { data: user, error } = await supabase.auth.api.createUser({
-			email: jwtClaims.email,
-			email_confirm: true // missing provide / identities guff
-		  })
-
+	let user =  await findExistingUserByEmail(jwtClaims.email);
+	{
+		const { data: response, error } = await supabase.auth.admin.listUsers();
+		// console.log("listUsers response:", response.users);
+		for await (let u of response.users) {
+			if (u.id == user.id) {
+				console.log("we found existing user in supabase:", u);
+			}
+		}
 	}
 
+	if (user == null) {
+		console.log("🌱 creating user");
+		const { data: newUser, error } = await supabase.auth.admin.createUser({
+			email: jwtClaims.email,
+			email_confirm: true // missing provide / identities guff
+		})
+		console.log("newUser:", newUser);
 
-
-	// TODO - 
-	// IF EXISTING APPLE ID) WHERE the email = matches
-	//  - check it's enabled
-	//  - return valid JWT
-	// {"provider":"apple","providers":["apple"]}
-	// ELSE) create new account
-      
+	} else {
+		console.log("🌱 we found a gotrue user:",user);
+		// create an access token
+		let claims = {
+			"StandardClaims": {
+				"sub": user.id,
+				"aud": "",
+				"exp": Math.floor(Date.now() / 1000),
+			},
+			"Email": user.Email,
+			"AppMetaData": user.AppMetaData,
+			"UserMetaData": user.UserMetaData,
+		}
+		console.log("✅ claims:", claims);
+		const jwt = sign(claims, config.supabase.jwtSecret);
+		console.log("jwt:", jwt);
+		return jwt;
+	}
 
 }
+
 // {"id":"9df2971d-fdf7-471a-b4ed-ccdab7f75f32",
 // "aud":"",
 // "role":"",
@@ -171,7 +204,7 @@ const returnExistingSupabaseJWTorCreateAccount = async (claims) => {
 // "created_at":"2022-11-14T02:46:04.168506Z","updated_at":"2022-11-14T02:46:04.177712Z"}%
 
 
-// make sure the apple login was for this app
+// make sure the apple login was for this app (and not just a successful login from other app)
 const verifyIdToken = async (clientSecret, idToken, clientID) => {
 
 	if (!idToken) {
@@ -211,9 +244,9 @@ const verifyIdToken = async (clientSecret, idToken, clientID) => {
 	return jwtClaims;
 };
 
-/*
+
 //  curl -X POST -d 'code=cf2add9a5a15842d4b06683fa89152446.0.ntrx.OHzVN63UPWqSjEr-oBsU6g' http://0.0.0.0:80/login/apple
-app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, next) => {
+/*app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, next) => {
 	const clientSecret = getClientSecret();
 	const params = {
 		grant_type: 'authorization_code', // refresh_token authorization_code
@@ -230,7 +263,7 @@ app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, 
 		url: 'https://appleid.apple.com/auth/token'
 	}).then(response => {
 		verifyIdToken(clientSecret, response.data.id_token, config.apple.clientID).then((jwtClaims) => {
-      return returnExistingSupabaseJWTorCreateAccount(jwtClaims);
+			return returnExistingSupabaseJWTorCreateAccount(jwtClaims);
 		})
 	}).catch(error => {
 		console.log("error:", error);
@@ -242,6 +275,18 @@ app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, 
 })
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')))
-app.listen(process.env.PORT || 80, () => console.log(`App listening on port ${process.env.PORT || 80}!  http://0.0.0.0:80/login/apple `))
-*/
-returnExistingSupabaseJWTorCreateAccount();
+app.listen(process.env.PORT || 80, () => console.log(`App listening on port ${process.env.PORT || 80}!  http://0.0.0.0:80/login/apple `))*/
+
+const jwtClaims = {
+	iss: 'https://appleid.apple.com',
+	aud: 'app.test.ios',
+	exp: 1579483805,
+	iat: 1579483205,
+	sub: '000317.c7d501c4f43c4a40ac3f79e122336fcf.0952',
+	at_hash: 'G413OYB2Ai7UY5GtiuG68A',
+	email: 'da6evzzywz@privaterelay.appleid.com',
+	email_verified: 'true',
+	is_private_email: 'true',
+	auth_time: 1579483204
+};
+returnExistingSupabaseJWTorCreateAccount(jwtClaims);

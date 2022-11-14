@@ -1,19 +1,23 @@
 {
-  "name": "sign-in-with-apple-for-node",
+  "name": "sign-in-with-apple-for-supabase",
   "version": "1.0.0",
   "description": "sign-in-with-apple demo",
   "scripts": {
     "start": "node server.js"
   },
-  "author": "wwenj",
+  "author": "johndpope",
   "dependencies": {
+    "@supabase/gotrue-js": "^2.3.0",
+    "@supabase/supabase-js": "^2.1.0",
     "axios": "^0.19.0",
     "body-parser": "^1.19.0",
     "dotenv": "^8.0.0",
     "express": "^4.17.1",
     "jsonwebtoken": "^8.5.1",
+    "jwt-encode": "^1.0.1",
     "node-rsa": "^1.0.6",
     "pg": "^8.8.0",
+    "pg-pool": "^3.5.2",
     "querystring": "^0.2.0"
   }
 }
