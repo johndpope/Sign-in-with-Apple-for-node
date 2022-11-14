@@ -312,7 +312,7 @@ app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, 
 })
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')))
-app.listen(process.env.PORT || 80, () => console.log(`App listening on port ${process.env.PORT || 80}!  http://0.0.0.0:80 callbackurl  http://0.0.0.0:80/login/apple `))
+app.listen(process.env.PORT || 3000, () => console.log(`App listening on port ${process.env.PORT || 3000}!  http://0.0.0.0:3000 callbackurl  http://0.0.0.0:3000/login/apple `))
 /*
 const jwtClaims = {
 	iss: 'https://appleid.apple.com',
