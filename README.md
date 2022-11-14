@@ -23,7 +23,7 @@ docker compose up
 
 
 ```shell
-curl -X POST -d '{"email":"test@test.com","password":"test1234"}' https://qfwzdkpmyzajmmvupgzy.supabase.co/auth/v1/signup -H "apikey: SERVICE_KEY" \
+curl -X POST -d '{"email":"test@test.com","password":"test1234"}' https://[SERVER].supabase.co/auth/v1/signup -H "apikey: SERVICE_KEY" \
 -H "Authorization: Bearer SERVICE_KEY"
 ```
 ```javascript
