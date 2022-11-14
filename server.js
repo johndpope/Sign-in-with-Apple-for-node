@@ -58,7 +58,7 @@ const config = {
 }
 
 const GOTRUE_URL = NEXT_PUBLIC_SUPABASE_URL;//'http://0.0.0.0:9999'
-const auth = new GoTrueClient({ url: GOTRUE_URL })
+const goTrueClient = new GoTrueClient({ url: GOTRUE_URL })
 
 // POSTGRES
 const pool = new Pool({
@@ -169,13 +169,39 @@ const createAccountManually = async (email) => {
 const returnExistingSupabaseJWTorCreateAccount = async (jwtClaims) => {
 
 	let user =  await findExistingUserByEmail(jwtClaims.email);
+
 	if (user == null) {
+		let slimUserMeta =  {   email: jwtClaims.email,
+			email_verified: true,
+			full_name: 'John Pope',
+			iss: 'https://appleid.apple.com/auth/keys',
+			name: 'John Pope',
+			provider_id: "what???",
+			sub: jwtClaims.sub
+		}
 		console.log("🌱 creating user");
-		const { data: newUser, error } = await supabase.auth.admin.createUser({
+		const { data: data, error } = await supabase.auth.admin.createUser({
 			email: jwtClaims.email,
-			email_confirm: true // missing provide / identities guff
+			email_confirm: true, // missing provide / identities guff
+			user_metadata:jwtClaims,
+			app_metadata:{ provider: 'apple', providers: [ 'apple' ] }
 		})
+
+
+		let newUser = data.user;
 		console.log("newUser:", newUser);
+		{
+			const { data: response, error } = await supabase.auth.admin.listUsers();
+			// console.log("listUsers response:", response.users);
+			for await (let u of response.users) {
+				if (u.id == newUser.id) {
+					console.log("we found existing gotrue user in supabase:", u);
+					console.log("issue jwt:", u.jwt());
+				}
+			}
+		}
+
+			
 
 		// create an access token
 		let claims = {
@@ -300,6 +326,7 @@ app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, 
 		url: 'https://appleid.apple.com/auth/token'
 	}).then(response => {
 		verifyIdToken(clientSecret, response.data.id_token, config.apple.clientID).then((jwtClaims) => {
+			console.log("🍭 apple jwtClaims:", jwtClaims);
 			returnExistingSupabaseJWTorCreateAccount(jwtClaims).then((newUser) => {
 				return res.status(200).json({
 					message: 'ok',
@@ -318,8 +345,8 @@ app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, 
 })
 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')))
-app.listen(process.env.PORT || 3000, () => console.log(`App listening on port ${process.env.PORT || 3000}!  http://0.0.0.0:3000 callbackurl  http://0.0.0.0:3000/login/apple `))
-/*
+//app.listen(process.env.PORT || 3000, () => console.log(`App listening on port ${process.env.PORT || 3000}!  http://0.0.0.0:3000 callbackurl  http://0.0.0.0:3000/login/apple `))
+
 const jwtClaims = {
 	iss: 'https://appleid.apple.com',
 	aud: 'app.test.ios',
@@ -327,11 +354,12 @@ const jwtClaims = {
 	iat: 1579483205,
 	sub: '000317.c7d501c4f43c4a40ac3f79e122336fcf.0952',
 	at_hash: 'G413OYB2Ai7UY5GtiuG68A',
-	email: 'da6evzzywz1@privaterelay.appleid.com',
+	email: 'john.pope@wweevv.app',
 	email_verified: 'true',
 	is_private_email: 'true',
 	auth_time: 1579483204
 };
-// returnExistingSupabaseJWTorCreateAccount(jwtClaims);
-console.log("json:", JSON.stringify(jwtClaims));
-createAccountManually("bob8@bob.com")*/
+ returnExistingSupabaseJWTorCreateAccount(jwtClaims);
+
+// console.log("json:", JSON.stringify(jwtClaims));
+// createAccountManually("john.pope+1@wweevv.app")
