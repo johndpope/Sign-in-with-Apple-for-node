@@ -33,6 +33,12 @@ if (!NEXT_PUBLIC_SUPABASE_SERVICE_KEY)
 const supabase = createClient(NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_SERVICE_KEY);
 
 /// N.B. for docker local - jwSecret must match  GOTRUE_JWT_SECRET="1234" in .env.docker
+/* INSTRUCTIONS - PREFACE
+Create key - Sign in with Apple
+https://developer.apple.com/account/resources/authkeys/list
+Download p8 file from apple into /.static/
+2) update name */
+const keyFile = '.static/AuthKey_KFJ7FG3H2V.p8'
 const config = {
 	"postgres": {
 		"host": POSTGRES_URL,
@@ -53,17 +59,6 @@ const config = {
 
 const GOTRUE_URL = NEXT_PUBLIC_SUPABASE_URL;//'http://0.0.0.0:9999'
 const auth = new GoTrueClient({ url: GOTRUE_URL })
-
-/* INSTRUCTIONS - PREFACE
-Create key - Sign in with Apple
-https://developer.apple.com/account/resources/authkeys/list
-Download p8 file from apple into /.static/
-2) update name */
-const keyFile = '.static/AuthKey_KFJ7FG3H2V.p8'
-/*
-3) update clientID/teamID/keyID/p8Filename/redirectURI below
-3) update credentials for postgres
-*/
 
 // POSTGRES
 const pool = new Pool({
