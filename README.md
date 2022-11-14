@@ -12,7 +12,7 @@ cp example.docker.env .env.docker
 docker compose up
 ```
 
-## VERIFY / CREATE USER
+## VERIFY / CREATE USER (you need to do this on empty database - otherwise there's no user table)
 ## (this will also create the necessary tables to select from)
 ```shell
  curl -X POST -d '{"email":"test@test.com","password":"test1234"}' http://0.0.0.0:9999/signup
