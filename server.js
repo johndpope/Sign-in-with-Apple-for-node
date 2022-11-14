@@ -122,8 +122,8 @@ const returnExistingSupabaseJWTorCreateAccount = async (claims) => {
 			  auth_time: 1579483204 }
 
 
-	const res = await db.query('SELECT $1::text as message', ['Hello world!'])
-	console.log("ok:",res);
+	const res = await db.query('SELECT * FROM auth.users WHERE email = $1', ["test@test.com"]);
+	console.log("ok:",res.rows[0].id);
 
 
 	
