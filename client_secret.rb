@@ -2,7 +2,7 @@ require 'jwt'
 
 key_file = '.static/AuthKey_***.p8'
 team_id = '****'
-client_id = '****' # CRITICAL - THIS IS NOT APP ID -> SELECT SERVICE ID (where it says APP ID) > CREATE + !!!! https://developer.apple.com/account/resources/identifiers/serviceId/  
+client_id = '****' # CRITICAL - THIS IS NOT APP ID -> SELECT SERVICE ID (where it says APP ID) > CREATE + !!!! https://developer.apple.com/account/resources/identifiers/serviceId/  https://developer.apple.com/forums/thread/122536 
 key_id = '****'
 
 ecdsa_key = OpenSSL::PKey::EC.new IO.read key_file
@@ -23,4 +23,6 @@ token = JWT.encode claims, ecdsa_key, 'ES256', headers
 
 puts token
 
-# once you have this update supabase with the SERVICE ID + this token
+
+# https://app.supabase.com/project/ Authentication > Providers > Apple
+# once you have this token add the corresponding SERVICE ID + this token
