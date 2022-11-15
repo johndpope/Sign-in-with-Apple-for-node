@@ -12,7 +12,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { GoTrueClient } = require('@supabase/gotrue-js');
 const sign = require('jwt-encode');
 var Pool = require('pg-pool')
-const jsonwebtoken = require('jsonwebtoken');
+
 
 // by default the pool uses the same
 // configuration as whatever `pg` version you have installed
