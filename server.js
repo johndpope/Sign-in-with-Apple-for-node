@@ -400,8 +400,8 @@ app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, 
 			returnExistingSupabaseJWTorCreateAccount(jwtClaims,fullname,identityToken,nonce,givenName).then((userJwt) => {
 				return res.status(200).json({
 					message: 'ok',
-					'sb_access_token' : userJwt,
-					'sb_refresh_token': 'unknown'
+					'access_token' : userJwt,
+					'refresh_token': 'unknown'
 				})
 			});
 			
