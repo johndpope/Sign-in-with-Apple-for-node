@@ -248,7 +248,13 @@ const returnExistingSupabaseJWTorCreateAccount = async (jwtClaims,fullName,ident
 		console.log("✅ claims:", claims);
 		const jwt = sign(claims, config.supabase.jwtSecret);
 		console.log("jwt:", jwt);
-		return jwt;
+
+		{
+			// test the access_token.
+			const { data: response, error } = await supabase.auth.setAuth(jwt);
+		}
+		
+		return jwt
 		
 	} else {
 
@@ -391,10 +397,10 @@ app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, 
 	}).then(response => {
 		verifyIdToken(clientSecret, response.data.id_token, config.apple.clientID).then((jwtClaims) => {
 			console.log("🍭 apple jwtClaims:", jwtClaims);
-			returnExistingSupabaseJWTorCreateAccount(jwtClaims,fullname,identityToken,nonce,givenName).then((newUser) => {
+			returnExistingSupabaseJWTorCreateAccount(jwtClaims,fullname,identityToken,nonce,givenName).then((userJwt) => {
 				return res.status(200).json({
 					message: 'ok',
-					data: newUser
+					data: {'access_token' : userJwt}
 				})
 			});
 			
