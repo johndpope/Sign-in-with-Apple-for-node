@@ -13,6 +13,7 @@ const { GoTrueClient } = require('@supabase/gotrue-js');
 const sign = require('jwt-encode');
 var Pool = require('pg-pool')
 
+
 // by default the pool uses the same
 // configuration as whatever `pg` version you have installed
 require('dotenv').config({ path: '.env' });
@@ -167,37 +168,67 @@ const createAccountManually = async (email) => {
 }
 
 // TODO - introspect apple for full_name / name - it's not initially returned...
-const returnExistingSupabaseJWTorCreateAccount = async (jwtClaims,fullName,givenName) => {
+const returnExistingSupabaseJWTorCreateAccount = async (jwtClaims,fullName,identityToken,nonce) => {
+
+	// https://github.com/supabase/gotrue-js/pull/207 - looks like this approach is obsolete??
+/*	let params =     {
+		"client_id": "com.wweevv.client",
+		"nonce": nonce,
+		"id_token": identityToken,
+		"issuer": "https://appleid.apple.com/"
+	}       
+
+	// BROKEN - obsolete method?
+	const { user, session, error } = await supabase.auth.signIn({ //supabase.auth.signIn is not a function
+        "oidc":{
+            "id_token": identityToken,
+            "nonce": nonce,
+            "provider": 'apple'
+        }
+      })
+	  console.log("user:",user);
+	  console.log("session:",session);
+	  console.log("🔥 error:",error);
+	  
+	// returns error {"code":500,"msg":"Internal server error","error_id":"35106675-66a4-417b-b045-5fc7410144ab"}%
+	axios({ 
+		method: 'POST',
+		headers: { 'Content-Type': 'application/x-www-form-urlencoded',
+					'apikey':NEXT_PUBLIC_SUPABASE_SERVICE_KEY
+		},
+		data: qs.stringify(params),
+		url: 'https://qfwzdkpmyzajmmvupgzy.supabase.co/auth/v1/token?grant_type=id_token'
+	}).then(response => {
+		console.log("response:",response);
+	}).catch(error => {
+		console.log("🔥 error:", error);
+		// return res.status(500).json({
+		// 	message: 'error',
+		// 	error: error.response.data
+		// })
+	})
+*/
 
 	let user =  await findExistingUserByEmail(jwtClaims.email);
 
 	if (user == null) {
+
+		// CREATE THE USER
 		let slimUserMeta =  {   email: jwtClaims.email,
 			email_verified: true,
 			full_name: fullName,
 			iss: 'https://appleid.apple.com/auth/keys',
 			name: givenName,
-			provider_id: "what???",
+			provider_id: jwtClaims,
 			sub: jwtClaims.sub
 		}
 		console.log("🌱 creating user");
 		const { data: data, error } = await supabase.auth.admin.createUser({
 			email: jwtClaims.email,
 			email_confirm: true, // missing provide / identities guff
-			user_metadata:jwtClaims,
+			user_metadata:slimUserMeta,
 			app_metadata:{ provider: 'apple', providers: [ 'apple' ] }
 		})
-
-
-
-		{
-			const { data: tokenResponse, error } = await supabase.auth.admin.token({
-				"email": "yp4yscqsft@privaterelay.appleid.com",
-				"password": ""
-			  })
-			console.log("tokenResponse:",tokenResponse);
-		}
-
 		let newUser = data.user;
 		console.log("newUser:", newUser);
 		{
@@ -211,9 +242,7 @@ const returnExistingSupabaseJWTorCreateAccount = async (jwtClaims,fullName,given
 			}
 		}
 
-			
-
-		// create an access token
+		// generate an access token - and return 
 		let claims = {
 			"StandardClaims": {
 				"sub": newUser.id,
@@ -230,18 +259,42 @@ const returnExistingSupabaseJWTorCreateAccount = async (jwtClaims,fullName,given
 		return jwt;
 		
 	} else {
-		// Match up to the userId to user dictionary
-		{
-			const { data: response, error } = await supabase.auth.admin.listUsers();
-			// console.log("listUsers response:", response.users);
-			for await (let u of response.users) {
-				if (u.id == user.id) {
-					console.log("we found existing user in supabase:", u);
-				}
-			}
-		}
+
 		console.log("🌱 we found a gotrue user:",user);
-		// create an access token
+		// WE NEED TO GENERATE ACCESS-TOKEN somehow.
+
+		// 1. approach - use the generate_link - https://github.com/supabase/gotrue#post-admingenerate_link
+		//	
+		// curl -X POST -d '{"type":"magiclink","email":"john.pope+19@wweevv.app"}' https://qfwzdkpmyzajmmvupgzy.supabase.co/auth/v1/admin/generate_link -H "apikey: SERVICE_KEY" -H "Authorization: Bearer SERVICE_KEY"
+		//  this creates a cookie on the web browser / client side once you click through the 
+		// {"id":"ac27f663-96f5-467f-9482-91287eb3e23e","aud":"authenticated","role":"authenticated","email":"john.pope+19@wweevv.app","phone":"","confirmation_sent_at":"2022-11-15T00:23:58.007313Z","recovery_sent_at":"2022-11-15T02:22:25.904989565Z","app_metadata":{"provider":"email","providers":["email"]},"user_metadata":{},"identities":[{"id":"ac27f663-96f5-467f-9482-91287eb3e23e","user_id":"ac27f663-96f5-467f-9482-91287eb3e23e","identity_data":{"sub":"ac27f663-96f5-467f-9482-91287eb3e23e"},"provider":"email","last_sign_in_at":"2022-11-15T00:23:58.101605Z","created_at":"2022-11-15T00:23:58.101655Z","updated_at":"2022-11-15T00:23:58.101658Z"}],"created_at":"2022-11-15T00:23:58.099149Z","updated_at":"2022-11-15T02:22:25.906115Z","action_link":"https://qfwzdkpmyzajmmvupgzy.supabase.co/auth/v1/verify?token=aba1467a3f5d4ec87e887ba1a671aec51337096f8f18dbfefd172400\u0026type=magiclink\u0026redirect_to=http://localhost:3000","email_otp":"479166","hashed_token":"aba1467a3f5d4ec87e887ba1a671aec51337096f8f18dbfefd172400","verification_type":"magiclink","redirect_to":"http://localhost:3000"}%
+		// when I click through action-link - "action_link":"https://qfwzdkpmyzajmmvupgzy.supabase.co/auth/v1/verify?token=aba1467a3f5d4ec87e887ba1a671aec51337096f8f18dbfefd172400\u0026type=magiclink\u0026redirect_to=http://localhost:3000"
+		// it successfully generates sb-access-token in client side cookie - but I need that value here to send to app.
+		// It's possible we could use superagent here to achieve this - there's got to be a better way....
+
+		// 2. find the user - invoke jwt() on it to get jwt. Unfortunately doesn't work.
+		// Match up to the userId to user dictionary
+		// {
+		// 	const { data: response, error } = await supabase.auth.admin.listUsers();
+		// 	// console.log("listUsers response:", response.users);
+		// 	for await (let u of response.users) {
+		// 		if (u.id == user.id) {
+		// 			console.log("we found existing user in supabase:", u);
+		// 		}
+		// 	}
+		// }
+
+		// WHY ??? 
+		{
+			// const { data: tokenResponse, error } = await supabase.auth.token({
+			// 	"email": "yp4yscqsft@privaterelay.appleid.com",
+			// 	"password": ""
+			//   })
+			// console.log("tokenResponse:",tokenResponse);
+		}
+
+	
+		// 3. craft an access token manually.
 		let claims = {
 			"StandardClaims": {
 				"sub": user.id,
@@ -254,8 +307,9 @@ const returnExistingSupabaseJWTorCreateAccount = async (jwtClaims,fullName,given
 		}
 		console.log("✅ claims:", claims);
 		const jwt = sign(claims, config.supabase.jwtSecret);
-		console.log("descrypt on https://jwt.io -", jwt);
+		console.log("decrypt on https://jwt.io -", jwt);
 		return jwt;
+	
 	}
 
 }
@@ -325,11 +379,12 @@ app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, 
 	let email = req.body.email;
 	let givenName = req.body.given_name;
 	let identityToken = req.body.identity_token;
+	let nonce = req.body.nonce;
 	console.log("🍭 req.body:", req.body);
 
 
 	const params = {
-		grant_type: 'authorization_code', // refresh_token authorization_code
+		grant_type: 'authorization_code', // id_token refresh_token authorization_code
 		code: req.body.code,
 		redirect_uri: config.apple.redirectURI,
 		client_id: config.apple.clientID,
@@ -344,7 +399,7 @@ app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, 
 	}).then(response => {
 		verifyIdToken(clientSecret, response.data.id_token, config.apple.clientID).then((jwtClaims) => {
 			console.log("🍭 apple jwtClaims:", jwtClaims);
-			returnExistingSupabaseJWTorCreateAccount(jwtClaims,fullname).then((newUser) => {
+			returnExistingSupabaseJWTorCreateAccount(jwtClaims,fullname,identityToken,nonce).then((newUser) => {
 				return res.status(200).json({
 					message: 'ok',
 					data: newUser
@@ -364,19 +419,3 @@ app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, 
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')))
 app.listen(process.env.PORT || 3000, () => console.log(`App listening on port ${process.env.PORT || 3000}!  http://0.0.0.0:3000 callbackurl  http://0.0.0.0:3000/login/apple `))
 
-// const jwtClaims = {
-// 	iss: 'https://appleid.apple.com',
-// 	aud: 'app.test.ios',
-// 	exp: 1579483805,
-// 	iat: 1579483205,
-// 	sub: '000317.c7d501c4f43c4a40ac3f79e122336fcf.0952',
-// 	at_hash: 'G413OYB2Ai7UY5GtiuG68A',
-// 	email: 'yp4yscqsft@privaterelay.appleid.com',
-// 	email_verified: 'true',
-// 	is_private_email: 'true',
-// 	auth_time: 1579483204
-// };
-//  returnExistingSupabaseJWTorCreateAccount(jwtClaims);
-
-// console.log("json:", JSON.stringify(jwtClaims));
-// createAccountManually("john.pope+1@wweevv.app")
