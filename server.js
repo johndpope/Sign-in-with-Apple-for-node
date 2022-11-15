@@ -12,7 +12,7 @@ const { createClient } = require('@supabase/supabase-js');
 const { GoTrueClient } = require('@supabase/gotrue-js');
 const sign = require('jwt-encode');
 var Pool = require('pg-pool')
-
+const jsonwebtoken = require('jsonwebtoken');
 
 // by default the pool uses the same
 // configuration as whatever `pg` version you have installed
@@ -168,7 +168,7 @@ const createAccountManually = async (email) => {
 }
 
 // TODO - introspect apple for full_name / name - it's not initially returned...
-const returnExistingSupabaseJWTorCreateAccount = async (jwtClaims,fullName,identityToken,nonce) => {
+const returnExistingSupabaseJWTorCreateAccount = async (jwtClaims,fullName,identityToken,nonce,givenName) => {
 
 	// https://github.com/supabase/gotrue-js/pull/207 - looks like this approach is obsolete??
 /*	let params =     {
@@ -243,16 +243,8 @@ const returnExistingSupabaseJWTorCreateAccount = async (jwtClaims,fullName,ident
 		}
 
 		// generate an access token - and return 
-		let claims = {
-			"StandardClaims": {
-				"sub": newUser.id,
-				"aud": "",
-				"exp": Math.floor(Date.now() / 1000),
-			},
-			"Email": newUser.Email,
-			"AppMetaData": newUser.AppMetaData,
-			"UserMetaData": newUser.UserMetaData,
-		}
+		var claims = newUser;
+		claims.session_id = "12341234" // ??? 
 		console.log("✅ claims:", claims);
 		const jwt = sign(claims, config.supabase.jwtSecret);
 		console.log("jwt:", jwt);
@@ -399,7 +391,7 @@ app.post('/login/apple', bodyParser.urlencoded({ extended: false }), (req, res, 
 	}).then(response => {
 		verifyIdToken(clientSecret, response.data.id_token, config.apple.clientID).then((jwtClaims) => {
 			console.log("🍭 apple jwtClaims:", jwtClaims);
-			returnExistingSupabaseJWTorCreateAccount(jwtClaims,fullname,identityToken,nonce).then((newUser) => {
+			returnExistingSupabaseJWTorCreateAccount(jwtClaims,fullname,identityToken,nonce,givenName).then((newUser) => {
 				return res.status(200).json({
 					message: 'ok',
 					data: newUser
