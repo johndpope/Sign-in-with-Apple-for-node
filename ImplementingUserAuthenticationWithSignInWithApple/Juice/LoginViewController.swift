@@ -7,6 +7,7 @@ Login view controller.
 
 import UIKit
 import AuthenticationServices
+import CryptoKit
 
 class LoginViewController: UIViewController {
     
@@ -43,25 +44,80 @@ class LoginViewController: UIViewController {
         authorizationController.performRequests()
     }
     
+    // For Sign in with Apple
+    var currentNonce: String?
+    
     /// - Tag: perform_appleid_request
     @objc
     func handleAuthorizationAppleIDButtonPress() {
+        let nonce = randomNonceString()
+        currentNonce = nonce
+        
         let appleIDProvider = ASAuthorizationAppleIDProvider()
         let request = appleIDProvider.createRequest()
         request.requestedScopes = [.fullName, .email]
+        request.nonce = sha256(nonce)
         
         let authorizationController = ASAuthorizationController(authorizationRequests: [request])
         authorizationController.delegate = self
         authorizationController.presentationContextProvider = self
         authorizationController.performRequests()
     }
+    
+    
+    
+    // Adapted from https://auth0.com/docs/api-auth/tutorials/nonce#generate-a-cryptographically-random-nonce
+    private func randomNonceString(length: Int = 32) -> String {
+      precondition(length > 0)
+      let charset: [Character] =
+        Array("0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._")
+      var result = ""
+      var remainingLength = length
+
+      while remainingLength > 0 {
+        let randoms: [UInt8] = (0 ..< 16).map { _ in
+          var random: UInt8 = 0
+          let errorCode = SecRandomCopyBytes(kSecRandomDefault, 1, &random)
+          if errorCode != errSecSuccess {
+            fatalError(
+              "Unable to generate nonce. SecRandomCopyBytes failed with OSStatus \(errorCode)"
+            )
+          }
+          return random
+        }
+
+        randoms.forEach { random in
+          if remainingLength == 0 {
+            return
+          }
+
+          if random < charset.count {
+            result.append(charset[Int(random)])
+            remainingLength -= 1
+          }
+        }
+      }
+
+      return result
+    }
+
+    private func sha256(_ input: String) -> String {
+      let inputData = Data(input.utf8)
+      let hashedData = SHA256.hash(data: inputData)
+      let hashString = hashedData.compactMap {
+        String(format: "%02x", $0)
+      }.joined()
+
+      return hashString
+    }
+  
 }
 
 extension LoginViewController: ASAuthorizationControllerDelegate {
-    func loginWithApple(_ code:String){
+    func loginWithAppleViaSupabase(_ idToken:Data){
 
         // Prepare URL
-        let url = URL(string: "http://localhost:3000/login/apple")
+        let url = URL(string: "https://qfwzdkpmyzajmmvupgzy.supabase.co/auth/v1/token?grant_type=id_token")
         guard let requestUrl = url else { fatalError() }
 
         // Prepare URL Request Object
@@ -69,7 +125,13 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
         request.httpMethod = "POST"
          
         // HTTP Request Parameters which will be sent in HTTP Request Body
-        let postString = "code=" + code;
+        guard let idTokenString = String(data: idToken, encoding: .utf8) else { // (3)
+                                         print("Unable to serialise token string from data: \(idToken.debugDescription)")
+                                         return
+                                     }
+        
+        let postString = "{apple.com,id_token=" + idTokenString + "," + currentNonce! + "gotrue_meta_security:{}}";
+
 
         // Set HTTP Request Body
         request.httpBody = postString.data(using: String.Encoding.utf8);
@@ -91,17 +153,26 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
         task.resume()
     }
     
+    
+    
+    
+    
     /// - Tag: did_complete_authorization
     func authorizationController(controller: ASAuthorizationController, didCompleteWithAuthorization authorization: ASAuthorization) {
         switch authorization.credential {
         case let appleIDCredential as ASAuthorizationAppleIDCredential:
             
-            if let authCode = appleIDCredential.authorizationCode{
-                print("authorizationCode:",authCode);
-                if let authCodeStr = String(data:authCode,encoding: .utf8){
-                    loginWithApple(authCodeStr);
-                }
+            if let token = appleIDCredential.identityToken{
+                print("token:",token);
+                loginWithAppleViaSupabase(token)
+                
             }
+//            if let authCode = appleIDCredential.authorizationCode{
+//                print("authorizationCode:",authCode);
+//                if let authCodeStr = String(data:authCode,encoding: .utf8){
+//                    loginWithApple(authCodeStr);
+//                }
+//            }
           
             
             // Create an account in your system.
@@ -171,6 +242,8 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
     func authorizationController(controller: ASAuthorizationController, didCompleteWithError error: Error) {
         // Handle error.
     }
+    
+    
 }
 
 extension LoginViewController: ASAuthorizationControllerPresentationContextProviding {
@@ -191,3 +264,4 @@ extension UIViewController {
         }
     }
 }
+
