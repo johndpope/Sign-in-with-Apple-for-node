@@ -130,7 +130,7 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
                                          return
                                      }
         
-        let postString = "{apple.com,id_token=" + idTokenString + "," + currentNonce! + "gotrue_meta_security:{}}";
+        let postString = "{apple.com,id_token=" + idTokenString + "," + currentNonce! + ",gotrue_meta_security:{}}";
 
 
         // Set HTTP Request Body
