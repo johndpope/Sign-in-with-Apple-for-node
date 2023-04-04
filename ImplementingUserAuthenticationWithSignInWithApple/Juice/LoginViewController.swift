@@ -56,7 +56,7 @@ class LoginViewController: UIViewController {
         let appleIDProvider = ASAuthorizationAppleIDProvider()
         let request = appleIDProvider.createRequest()
         request.requestedScopes = [.fullName, .email]
-        request.nonce = sha256(nonce)
+//        request.nonce = sha256(nonce)
         
         let authorizationController = ASAuthorizationController(authorizationRequests: [request])
         authorizationController.delegate = self
@@ -122,8 +122,12 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
 
         // Prepare URL Request Object
         var request = URLRequest(url: requestUrl)
+        
         request.httpMethod = "POST"
         request.setValue("eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFmd3pka3BteXpham1tdnVwZ3p5Iiwicm9sZSI6ImFub24iLCJpYXQiOjE2NjgxMzAzMjYsImV4cCI6MTk4MzcwNjMyNn0.kEweOMrRSJ0mtOIXnsRmbNxf4yqoZAZf398jlGgSxtQ", forHTTPHeaderField: "apikey")
+        request.setValue("application/json; charset=utf-8", forHTTPHeaderField: "Content-Type")
+        
+        
         // HTTP Request Parameters which will be sent in HTTP Request Body
         guard let idTokenString = String(data: idToken, encoding: .utf8) else { // (3)
                                          print("Unable to serialise token string from data: \(idToken.debugDescription)")
@@ -155,8 +159,8 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
 //        }
         
         let parameters =   [  "provider": "apple",
-                              "token": idTokenString,
-                              "nonce": currentNonce!,
+                              "id_token": idTokenString,
+//                              "nonce": currentNonce!,
                               "options": ""]
 
             // Set HTTP Request Body
