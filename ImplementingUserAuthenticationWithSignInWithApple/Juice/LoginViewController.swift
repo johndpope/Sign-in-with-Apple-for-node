@@ -130,27 +130,41 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
                                          return
                                      }
         
-        let postString = "{apple.com,id_token=" + idTokenString + "," + currentNonce! + ",gotrue_meta_security:{}}";
+//        "client_id": "com.wweevv.client",
+//                    "nonce": "ed9844ef38be608d1df64953a13027e3a8be084f4dd9d80bf3368d06dfeba915",
+//                    "id_token":
+//                    "issuer": "https://appleid.apple.com/"
+        
+        
+      let parameters =  ["client_id": "com.wweevv.client",
+                     "nonce": currentNonce!,
+                     "id_token": idTokenString,
+                     "issuer": "https://appleid.apple.com/"]
+             
+        
 
 
-        // Set HTTP Request Body
-        request.httpBody = postString.data(using: String.Encoding.utf8);
-
-        // Perform HTTP Request
-        let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
-                
-                // Check for Error
-                if let error = error {
-                    print("🔥  Error took place \(error)")
-                    return
-                }
-         
-                // Convert HTTP Response Data to a String
-                if let data = data, let dataString = String(data: data, encoding: .utf8) {
-                    print("✅  Response data string:\n \(dataString)")
-                }
+        if let postData = (try? JSONSerialization.data(withJSONObject: parameters, options: [])) {
+            // Set HTTP Request Body
+            request.httpBody = postData
+            // Perform HTTP Request
+            let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
+                    
+                    // Check for Error
+                    if let error = error {
+                        print("🔥  Error took place \(error)")
+                        return
+                    }
+             
+                    // Convert HTTP Response Data to a String
+                    if let data = data, let dataString = String(data: data, encoding: .utf8) {
+                        print("✅  Response data string:\n \(dataString)")
+                    }
+            }
+            task.resume()
         }
-        task.resume()
+            
+       
     }
     
     
