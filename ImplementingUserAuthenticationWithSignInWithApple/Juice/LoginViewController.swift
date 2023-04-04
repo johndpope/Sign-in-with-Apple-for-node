@@ -129,24 +129,40 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
                                          print("Unable to serialise token string from data: \(idToken.debugDescription)")
                                          return
                                      }
+//        https://github.com/supabase/gotrue/issues/171
+        print("idTokenString:",idTokenString)
         
-//        "client_id": "com.wweevv.client",
-//                    "nonce": "ed9844ef38be608d1df64953a13027e3a8be084f4dd9d80bf3368d06dfeba915",
-//                    "id_token":
-//                    "issuer": "https://appleid.apple.com/"
-        
-        
-      let parameters =  ["client_id": "com.wweevv.client",
-                     "nonce": currentNonce!,
-                     "id_token": idTokenString,
-                     "issuer": "https://appleid.apple.com/"]
+        // FAILS
+       /* let parameters =   ["id_token": idTokenString,
+                        "nonce": currentNonce!,
+                        "issuer": "https://appleid.apple.com/",
+                         "client_id": "com.wweevv.client"]
+             */
              
+//        export type SignInWithIdTokenCredentials = {
+//          /**
+//           * Only Apple and Google ID tokens are supported for use from within iOS or Android applications.
+//           */
+//          provider: 'google' | 'apple'
+//          /** ID token issued by Apple or Google. */
+//          token: string
+//          /** If the ID token contains a `nonce`, then the hash of this value is compared to the value in the ID token. */
+//          nonce?: string
+//          options?: {
+//            /** Verification token received when the user completes the captcha on the site. */
+//            captchaToken?: string
+//          }
+//        }
         
+        let parameters =   [  "provider": "apple",
+                              "token": idTokenString,
+                              "nonce": currentNonce!,
+                              "options": ""]
 
-
-        if let postData = (try? JSONSerialization.data(withJSONObject: parameters, options: [])) {
             // Set HTTP Request Body
-            request.httpBody = postData
+            request.httpBody = try! JSONEncoder().encode(parameters)
+            print("parameters:",parameters)
+            
             // Perform HTTP Request
             let task = URLSession.shared.dataTask(with: request) { (data, response, error) in
                     
@@ -162,7 +178,7 @@ extension LoginViewController: ASAuthorizationControllerDelegate {
                     }
             }
             task.resume()
-        }
+        
             
        
     }
